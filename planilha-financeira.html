@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planilha Financeira — Gui & Nic</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root[data-theme="light"] {
+      --bg:#f5f5f3; --s1:#fcfcfb; --s2:#eeeeed; --s3:#e1e0d9;
+      --txt:#0b0b0b; --txt2:#52514e; --muted:#898781;
+      --blue:#2a78d6; --orange:#eb6834; --green:#1baf7a;
+      --yellow:#eda100; --pink:#e87ba4; --teal:#008300;
+      --violet:#4a3aa7; --red:#e34948;
+      --pos:#006300; --neg:#c0392b; --warn:#b07d00;
+      --card-border:rgba(11,11,11,0.09);
+    }
+    :root[data-theme="dark"] {
+      --bg:#111110; --s1:#1a1a19; --s2:#242422; --s3:#2c2c2a;
+      --txt:#f5f5f3; --txt2:#c3c2b7; --muted:#6b6a66;
+      --blue:#3987e5; --orange:#d95926; --green:#199e70;
+      --yellow:#c98500; --pink:#d55181; --teal:#009900;
+      --violet:#9085e9; --red:#e66767;
+      --pos:#0ca30c; --neg:#e66767; --warn:#fab219;
+      --card-border:rgba(255,255,255,0.08);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5}
+
+    /* Header */
+    .hdr{background:var(--s1);border-bottom:1px solid var(--s3);display:flex;align-items:center;gap:10px;padding:0 20px;height:52px;position:sticky;top:0;z-index:100}
+    .hdr-title{font-size:15px;font-weight:700;flex:1}
+    .hdr-title small{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+    .ico-btn{background:none;border:1px solid var(--s3);border-radius:5px;color:var(--txt2);cursor:pointer;font-size:13px;padding:5px 10px;line-height:1}
+    .ico-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+    /* Month tabs */
+    .month-nav{background:var(--s1);border-bottom:2px solid var(--s3);display:flex;overflow-x:auto;padding:0 20px;gap:2px;scrollbar-width:none}
+    .month-nav::-webkit-scrollbar{display:none}
+    .month-tab{background:none;border:none;border-bottom:3px solid transparent;color:var(--txt2);cursor:pointer;font-size:13px;font-weight:500;padding:11px 14px;white-space:nowrap;transition:all .15s;margin-bottom:-2px}
+    .month-tab:hover{color:var(--txt)}
+    .month-tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+    .month-tab.dashboard-tab{color:var(--muted);font-size:12px}
+    .month-tab.dashboard-tab.active{color:var(--blue)}
+
+    /* Panes */
+    .pane{display:none;padding:20px;max-width:1100px;margin:0 auto}
+    .pane.active{display:block}
+
+    /* Summary bar */
+    .summary-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+    .sum-card{background:var(--s1);border:1px solid var(--card-border);border-radius:8px;padding:14px 16px}
+    .sum-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
+    .sum-val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+    .sum-val.inc{color:var(--pos)} .sum-val.exp{color:var(--neg)} .sum-val.bal{color:var(--blue)}
+    .sum-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .sum-delta{font-size:11px;margin-top:3px}
+    .sum-delta.up{color:var(--neg)} .sum-delta.down{color:var(--pos)}
+    .sum-delta.neutral{color:var(--muted)}
+
+    /* Progress bar */
+    .prog-wrap{height:4px;background:var(--s3);border-radius:2px;margin-top:8px;overflow:hidden}
+    .prog-fill{height:100%;border-radius:2px;transition:width .4s}
+
+    /* Two-column */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+    /* Section */
+    .sec{background:var(--s1);border:1px solid var(--card-border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+    .sec-head{background:var(--s2);border-bottom:1px solid var(--s3);display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+    .sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt2)}
+    .sec-total{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+    .sec-total.inc{color:var(--pos)} .sec-total.exp{color:var(--neg)}
+
+    /* Section subheader (column labels) */
+    .row-header{display:grid;grid-template-columns:28px 1fr 100px 50px 90px 32px;gap:0;background:var(--s2);border-bottom:1px solid var(--s3);padding:5px 0}
+    .row-header span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:0 8px}
+    .row-header .rh-val{text-align:right} .row-header .rh-day{text-align:center}
+
+    /* Edit rows */
+    .edit-row{display:grid;grid-template-columns:28px 1fr 100px 50px 90px 32px;align-items:center;border-bottom:1px solid var(--s3);border-left:3px solid transparent;transition:border-left-color .15s}
+    .edit-row:last-child{border-bottom:none}
+    .edit-row:hover{background:color-mix(in srgb,var(--s2) 50%,transparent)}
+    .edit-row.due-soon{border-left-color:var(--warn)!important}
+    .edit-row.due-overdue{border-left-color:var(--neg)!important}
+    .edit-row.row-paid{opacity:.55}
+    .edit-row.row-paid .row-name{text-decoration:line-through;color:var(--muted)}
+
+    .row-check{display:flex;align-items:center;justify-content:center;padding-left:8px}
+    .row-check input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--pos)}
+    .row-name,.row-val{background:none;border:none;color:var(--txt);font-family:inherit;font-size:13px;padding:9px 8px;width:100%;outline:none}
+    .row-name{font-weight:500}
+    .row-val{text-align:right;font-variant-numeric:tabular-nums}
+    .row-name:focus,.row-val:focus{background:color-mix(in srgb,var(--blue) 7%,var(--s1));outline:2px solid var(--blue);outline-offset:-2px;border-radius:2px}
+    .row-due{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;padding:4px 4px;width:100%;text-align:center;outline:none}
+    .row-due:focus{background:color-mix(in srgb,var(--blue) 7%,var(--s1));color:var(--txt);border-radius:3px;outline:2px solid var(--blue);outline-offset:-1px}
+    .row-cat{background:none;border:none;color:var(--txt2);font-family:inherit;font-size:11px;padding:4px 4px;width:100%;outline:none;cursor:pointer}
+    .row-cat:focus{background:var(--s2);outline:2px solid var(--blue);outline-offset:-1px;border-radius:2px}
+    .row-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 8px;line-height:1;opacity:0;transition:opacity .15s}
+    .edit-row:hover .row-del{opacity:1}
+    .row-del:hover{color:var(--neg)}
+
+    /* Section footer (paid/pending) */
+    .sec-footer{display:flex;gap:10px;padding:8px 14px;border-top:1px solid var(--s3);background:var(--s2);align-items:center;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600}
+    .pill-paid{background:color-mix(in srgb,var(--pos) 12%,transparent);color:var(--pos)}
+    .pill-pending{background:color-mix(in srgb,var(--orange) 12%,transparent);color:var(--orange)}
+    .pill-count{background:color-mix(in srgb,var(--blue) 12%,transparent);color:var(--blue)}
+
+    /* Cards (redesigned as rows) */
+    .card-row{display:grid;grid-template-columns:28px 1fr 100px 50px 32px;align-items:center;border-bottom:1px solid var(--s3);border-left:3px solid transparent;transition:border-left-color .15s}
+    .card-row:last-child{border-bottom:none}
+    .card-row:hover{background:color-mix(in srgb,var(--s2) 50%,transparent)}
+    .card-row.due-soon{border-left-color:var(--warn)!important}
+    .card-row.due-overdue{border-left-color:var(--neg)!important}
+    .card-row.row-paid{opacity:.55}
+    .card-row.row-paid .row-name{text-decoration:line-through;color:var(--muted)}
+
+    /* Variable expenses */
+    .filter-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--s2);border-bottom:1px solid var(--s3)}
+    .filter-bar label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    .filter-select{background:var(--s1);border:1px solid var(--s3);border-radius:5px;color:var(--txt);font-family:inherit;font-size:12px;padding:4px 8px;outline:none;cursor:pointer}
+    .filter-select:focus{border-color:var(--blue)}
+    .var-table{width:100%;border-collapse:collapse}
+    .var-table th{background:var(--s2);border-bottom:1px solid var(--s3);color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.06em;padding:8px 12px;text-align:left;text-transform:uppercase}
+    .var-table td{border-bottom:1px solid var(--s3);padding:0}
+    .var-table tr:last-child td{border-bottom:none}
+    .var-table tbody tr:hover td{background:color-mix(in srgb,var(--s2) 50%,transparent)}
+    .var-cell{background:none;border:none;color:var(--txt);font-family:inherit;font-size:13px;padding:9px 12px;width:100%;outline:none}
+    .var-cell:focus{background:color-mix(in srgb,var(--blue) 7%,var(--s1));outline:2px solid var(--blue);outline-offset:-2px;border-radius:2px}
+    select.var-cell{cursor:pointer}
+    .var-amt{text-align:right;font-variant-numeric:tabular-nums;color:var(--neg);font-weight:600}
+    .var-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 10px;line-height:1;width:36px;opacity:.3}
+    .var-table tbody tr:hover .var-del{opacity:1}
+    .var-del:hover{color:var(--neg)}
+
+    /* Add buttons */
+    .add-exp-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--s3);background:var(--s2)}
+    .btn-add{background:var(--blue);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;padding:7px 16px}
+    .btn-add:hover{opacity:.88}
+    .btn-add-sm{background:none;border:1px solid var(--s3);border-radius:5px;color:var(--txt2);cursor:pointer;font-size:12px;padding:5px 10px}
+    .btn-add-sm:hover{border-color:var(--blue);color:var(--blue)}
+
+    /* FAB */
+    .fab{position:fixed;bottom:24px;right:24px;background:var(--blue);border:none;border-radius:50px;color:#fff;cursor:pointer;font-size:14px;font-weight:700;padding:13px 22px;box-shadow:0 4px 16px rgba(42,120,214,.45);z-index:50;transition:transform .15s,box-shadow .15s}
+    .fab:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(42,120,214,.55)}
+
+    /* Dashboard */
+    .dash-row{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px}
+    .dash-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+    .chart-card{background:var(--s1);border:1px solid var(--card-border);border-radius:8px;padding:18px}
+    .chart-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
+    .chart-wrap{position:relative;height:200px}
+    .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+    .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)}
+    .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+    /* Annual table */
+    .annual-table{width:100%;border-collapse:collapse}
+    .annual-table th{background:var(--s2);border-bottom:1px solid var(--s3);border-right:1px solid var(--s3);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.05em;padding:9px 14px;text-align:right;text-transform:uppercase}
+    .annual-table th:first-child{text-align:left}
+    .annual-table td{border-bottom:1px solid var(--s3);border-right:1px solid var(--s3);font-size:13px;font-variant-numeric:tabular-nums;padding:9px 14px;text-align:right}
+    .annual-table td:first-child{font-weight:600;text-align:left}
+    .annual-table tbody tr:hover td{background:color-mix(in srgb,var(--s2) 40%,transparent)}
+    .annual-table td.pos{color:var(--pos);font-weight:600} .annual-table td.neg{color:var(--neg);font-weight:600}
+    .delta-cell{font-size:11px}
+    .delta-up{color:var(--neg)} .delta-dn{color:var(--pos)} .delta-eq{color:var(--muted)}
+
+    /* Next due badge */
+    .next-due-badge{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600}
+    .badge-ok{background:color-mix(in srgb,var(--pos) 10%,transparent);color:var(--pos)}
+    .badge-soon{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+    .badge-overdue{background:color-mix(in srgb,var(--neg) 12%,transparent);color:var(--neg)}
+
+    /* Category chart in month view */
+    .cat-chart-wrap{display:flex;align-items:center;gap:24px;padding:16px;flex-wrap:wrap}
+    .cat-chart-canvas{position:relative;height:180px;width:180px;flex-shrink:0}
+    .cat-leg-list{flex:1;min-width:160px;display:flex;flex-direction:column;gap:8px}
+    .cat-leg-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;gap:8px}
+    .cat-leg-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+    .cat-leg-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt2)}
+    .cat-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .cat-leg-nums{text-align:right;flex-shrink:0}
+    .cat-leg-val{font-weight:600;font-variant-numeric:tabular-nums;font-size:12px}
+    .cat-leg-pct{color:var(--muted);font-size:10px}
+
+    /* Toast */
+    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--s1);border-radius:6px;padding:10px 20px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+    #toast.show{opacity:1}
+
+    /* Misc */
+    .empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+    .comparativo{margin-top:16px;background:var(--s1);border:1px solid var(--card-border);border-radius:8px;padding:14px 16px}
+    .comp-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+    .comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+    .comp-item{font-size:13px}
+    .comp-label{color:var(--txt2);margin-bottom:2px;font-size:12px}
+    .comp-val{font-weight:600;font-variant-numeric:tabular-nums}
+
+    @media(max-width:640px){
+      .two-col{grid-template-columns:1fr}
+      .summary-bar{grid-template-columns:1fr 1fr}
+      .dash-row{grid-template-columns:1fr}
+      .dash-kpi{grid-template-columns:1fr 1fr}
+      .edit-row,.card-row{grid-template-columns:28px 1fr 90px 32px}
+      .edit-row .row-due,.edit-row .row-cat,.card-row .row-due{display:none}
+      .row-header{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="hdr-title">💰 Planilha Financeira <small>Gui &amp; Nic · 2026</small></span>
+  <button class="ico-btn" id="btnTheme" onclick="App.toggleTheme()">🌙</button>
+  <button class="ico-btn" onclick="App.exportReport()" title="Copiar resumo do mês">📋 Relatório</button>
+  <button class="ico-btn" onclick="App.exportCSV()">⬇ CSV</button>
+</header>
+
+<nav class="month-nav" id="monthNav"></nav>
+<div id="paneContainer"></div>
+<button class="fab" id="fabBtn" onclick="App.addVarExpense(App.activeMonth)">+ Despesa</button>
+<div id="toast"></div>
+
+<script>
+const MONTHS=[
+  {key:'2026-07',short:'Jul 26',long:'Julho 2026'},
+  {key:'2026-08',short:'Ago 26',long:'Agosto 2026'},
+  {key:'2026-09',short:'Set 26',long:'Setembro 2026'},
+  {key:'2026-10',short:'Out 26',long:'Outubro 2026'},
+  {key:'2026-11',short:'Nov 26',long:'Novembro 2026'},
+  {key:'2026-12',short:'Dez 26',long:'Dezembro 2026'},
+];
+
+const DEFAULT_INCOME=[
+  {id:'fi1',name:'Salário Líquido Gui',amount:8000},
+  {id:'fi2',name:'Comissão Gui',amount:0},
+  {id:'fi3',name:'Salário Líquido Nic',amount:4200},
+  {id:'fi4',name:'Comissão Nic',amount:0},
+];
+
+const DEFAULT_FIXED=[
+  {id:'fe01',name:'Apartamento Principal',  amount:2700,cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe02',name:'Condomínio',             amount:675, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe03',name:'Parcelamento condomínio',amount:360, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe04',name:'Apartamento menor',      amount:1000,cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe05',name:'Condomínio menor',       amount:300, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe06',name:'Parc. cond. menor',      amount:115, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe07',name:'Carro',                  amount:1200,cat:'Transporte',  dueDay:0,paid:false},
+  {id:'fe08',name:'Luz',                    amount:250, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe09',name:'Internet',               amount:120, cat:'Casa',        dueDay:0,paid:false},
+  {id:'fe10',name:'Seguro Carro',           amount:150, cat:'Transporte',  dueDay:0,paid:false},
+  {id:'fe11',name:'Aplicativos',            amount:200, cat:'Assinaturas', dueDay:0,paid:false},
+  {id:'fe12',name:'Claro Nic',              amount:100, cat:'Assinaturas', dueDay:0,paid:false},
+  {id:'fe13',name:'Tim Gui',                amount:65,  cat:'Assinaturas', dueDay:0,paid:false},
+  {id:'fe14',name:'PSN',                    amount:80,  cat:'Assinaturas', dueDay:0,paid:false},
+];
+
+const DEFAULT_CARDS=[
+  {id:'cc1',name:'Cartão Marisa',      amount:0,dueDay:0,paid:false},
+  {id:'cc2',name:'Cartão Casas Bahia', amount:0,dueDay:0,paid:false},
+  {id:'cc3',name:'Cartão Renner',      amount:0,dueDay:0,paid:false},
+  {id:'cc4',name:'Cartão Mercado Pago',amount:0,dueDay:0,paid:false},
+];
+
+const VAR_CATS=['Alimentação','Saúde','Lazer','Vestuário','Transporte','Educação','Casa','Assinaturas','Outros'];
+const FIXED_CATS=['Casa','Transporte','Assinaturas','Saúde','Educação','Lazer','Outros'];
+
+const PALETTE={
+  light:['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'],
+  dark: ['#3987e5','#d95926','#199e70','#c98500','#d55181','#009900','#9085e9','#e66767'],
+};
+
+const App={
+  state:null,
+  activeMonth:MONTHS[0].key,
+  charts:{bar:null,donut:null,cat:{}},
+  varFilter:{},
+
+  init(){
+    this.state=this.loadState();
+    this.applyTheme(this.state.theme);
+    this.buildNav();
+    this.buildPanes();
+    this.switchTab(this.activeMonth);
+  },
+
+  defaultMonth(){
+    return{
+      income:DEFAULT_INCOME.map(r=>({...r})),
+      fixed:DEFAULT_FIXED.map(r=>({...r})),
+      cards:DEFAULT_CARDS.map(r=>({...r})),
+      varExp:[],
+    };
+  },
+
+  ensureMonth(key){
+    let dirty=false;
+    if(!this.state.months[key]){this.state.months[key]=this.defaultMonth();dirty=true;}
+    const d=this.state.months[key];
+    d.fixed.forEach(r=>{
+      if(r.dueDay===undefined){r.dueDay=0;dirty=true;}
+      if(r.paid===undefined){r.paid=false;dirty=true;}
+      if(r.cat===undefined){r.cat='Outros';dirty=true;}
+    });
+    d.cards.forEach(r=>{
+      if(r.dueDay===undefined){r.dueDay=0;dirty=true;}
+      if(r.paid===undefined){r.paid=false;dirty=true;}
+    });
+    if(dirty)this.save();
+    return d;
+  },
+
+  loadState(){
+    try{
+      const r2=localStorage.getItem('pf-guinic-v2');
+      if(r2){const s=JSON.parse(r2);if(!s.months)s.months={};return s;}
+      const r1=localStorage.getItem('pf-guinic-v1');
+      if(r1){const s=JSON.parse(r1);if(!s.months)s.months={};return s;}
+    }catch{}
+    return{theme:'light',months:{}};
+  },
+
+  save(){localStorage.setItem('pf-guinic-v2',JSON.stringify(this.state));},
+
+  // ── Theme ──
+  toggleTheme(){
+    this.state.theme=this.state.theme==='light'?'dark':'light';
+    this.applyTheme(this.state.theme);this.save();
+    if(this.activeMonth==='dashboard')this.renderDashboard();
+  },
+  applyTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.getElementById('btnTheme').textContent=t==='light'?'🌙':'☀️';
+  },
+
+  // ── Nav ──
+  buildNav(){
+    const nav=document.getElementById('monthNav');
+    nav.innerHTML=`<button class="month-tab dashboard-tab" data-key="dashboard" onclick="App.switchTab('dashboard')">📊 Dashboard</button>`
+      +MONTHS.map(m=>`<button class="month-tab" data-key="${m.key}" onclick="App.switchTab('${m.key}')">${m.short}</button>`).join('');
+  },
+
+  switchTab(key){
+    this.activeMonth=key;
+    document.querySelectorAll('.month-tab').forEach(b=>b.classList.toggle('active',b.dataset.key===key));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+key));
+    document.getElementById('fabBtn').style.display=key==='dashboard'?'none':'';
+    key==='dashboard'?this.renderDashboard():this.renderMonth(key);
+  },
+
+  buildPanes(){
+    const c=document.getElementById('paneContainer');
+    c.innerHTML=`<div class="pane" id="pane-dashboard">
+      <div class="dash-kpi" id="dashKpi"></div>
+      <div class="dash-row">
+        <div class="chart-card">
+          <div class="chart-title">Receitas × Despesas — Jul a Dez 2026</div>
+          <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+          <div class="legend" id="legendBar"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Despesas por Categoria — <span id="donutMonthLabel">Jul 26</span></div>
+          <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+          <div class="legend" id="legendDonut"></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-head"><span class="sec-title">Resumo Anual</span></div>
+        <div style="overflow-x:auto"><table class="annual-table" id="annualTable"></table></div>
+      </div>
+    </div>`;
+    MONTHS.forEach(m=>{const d=document.createElement('div');d.className='pane';d.id='pane-'+m.key;c.appendChild(d);});
+  },
+
+  // ── Due status ──
+  dueStatus(dueDay,monthKey){
+    if(!dueDay)return'none';
+    const[y,m]=monthKey.split('-').map(Number);
+    const now=new Date();
+    if(y!==now.getFullYear()||m!==now.getMonth()+1)return'none';
+    const diff=dueDay-now.getDate();
+    if(diff<0)return'overdue';
+    if(diff<=3)return'soon';
+    return'ok';
+  },
+
+  nextDue(monthKey){
+    const d=this.ensureMonth(monthKey);
+    const[y,m]=monthKey.split('-').map(Number);
+    const now=new Date();
+    if(y!==now.getFullYear()||m!==now.getMonth()+1)return null;
+    const today=now.getDate();
+    const items=[...d.fixed,...d.cards].filter(r=>r.dueDay&&!r.paid);
+    const upcoming=items.filter(r=>r.dueDay>=today).sort((a,b)=>a.dueDay-b.dueDay);
+    if(!upcoming.length)return null;
+    return{name:upcoming[0].name,dueDay:upcoming[0].dueDay,days:upcoming[0].dueDay-today};
+  },
+
+  // ── Category breakdown ──
+  getCatBreakdown(key){
+    const d=this.ensureMonth(key);
+    const cats={};
+    d.fixed.forEach(r=>{const c=r.cat||'Outros';cats[c]=(cats[c]||0)+(r.amount||0);});
+    const ct=this.sumArr(d.cards);
+    if(ct>0)cats['Cartões']=(cats['Cartões']||0)+ct;
+    d.varExp.forEach(r=>{const c=r.cat||'Outros';cats[c]=(cats[c]||0)+(r.amount||0);});
+    return Object.entries(cats).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  },
+
+  // ── Dashboard ──
+  renderDashboard(){
+    const cols=PALETTE[this.state.theme];
+    const gridC=this.getCSSVar('--s3'),mutedC=this.getCSSVar('--muted');
+    const fmtK=v=>'R$ '+v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+    const fmtF=v=>'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    const md=MONTHS.map(m=>{
+      const d=this.ensureMonth(m.key);
+      const inc=this.sumArr(d.income);
+      const exp=this.sumArr(d.fixed)+this.sumArr(d.cards)+this.sumArr(d.varExp);
+      return{label:m.short,key:m.key,inc,exp,bal:inc-exp};
+    });
+
+    // Dashboard KPI cards
+    const totInc=md.reduce((a,m)=>a+m.inc,0);
+    const totExp=md.reduce((a,m)=>a+m.exp,0);
+    const avgBal=md.reduce((a,m)=>a+m.bal,0)/MONTHS.length;
+    document.getElementById('dashKpi').innerHTML=`
+      <div class="sum-card"><div class="sum-label">Total Receitas (ano)</div><div class="sum-val inc">${fmtF(totInc)}</div></div>
+      <div class="sum-card"><div class="sum-label">Total Despesas (ano)</div><div class="sum-val exp">${fmtF(totExp)}</div></div>
+      <div class="sum-card"><div class="sum-label">Saldo Médio Mensal</div><div class="sum-val ${avgBal>=0?'bal':'exp'}">${avgBal>=0?'':'-'}${fmtF(Math.abs(avgBal))}</div></div>
+    `;
+
+    // Bar chart
+    if(this.charts.bar)this.charts.bar.destroy();
+    this.charts.bar=new Chart(document.getElementById('chartBar'),{
+      type:'bar',
+      data:{labels:md.map(d=>d.label),datasets:[
+        {label:'Receitas',data:md.map(d=>d.inc),backgroundColor:cols[0],borderRadius:4,borderSkipped:'bottom',barPercentage:.7},
+        {label:'Despesas',data:md.map(d=>d.exp),backgroundColor:cols[1],borderRadius:4,borderSkipped:'bottom',barPercentage:.7},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtK(ctx.raw)}`}}},
+        scales:{
+          x:{grid:{display:false},border:{display:false},ticks:{color:mutedC,font:{size:11}}},
+          y:{grid:{color:gridC},border:{display:false},ticks:{color:mutedC,font:{size:11},callback:fmtK}}
+        }}
+    });
+    document.getElementById('legendBar').innerHTML=['Receitas','Despesas'].map((l,i)=>
+      `<span class="leg-item"><span class="leg-dot" style="background:${cols[i]}"></span>${l}</span>`).join('');
+
+    // Donut by category (use first month with any expenses, default to Jul)
+    const donutKey=md.find(m=>m.exp>0)?.key||MONTHS[0].key;
+    const donutMo=MONTHS.find(m=>m.key===donutKey);
+    document.getElementById('donutMonthLabel').textContent=donutMo?.short||'';
+    const catData=this.getCatBreakdown(donutKey);
+    if(this.charts.donut)this.charts.donut.destroy();
+    if(catData.length){
+      const dColors=catData.map((_,i)=>cols[i%cols.length]);
+      this.charts.donut=new Chart(document.getElementById('chartDonut'),{
+        type:'doughnut',
+        data:{labels:catData.map(([k])=>k),datasets:[{data:catData.map(([,v])=>v),backgroundColor:dColors,borderWidth:2,borderColor:this.getCSSVar('--s1'),hoverOffset:5}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtK(ctx.raw)}`}}}}
+      });
+      document.getElementById('legendDonut').innerHTML=catData.slice(0,6).map(([k],i)=>
+        `<span class="leg-item"><span class="leg-dot" style="background:${dColors[i]};border-radius:50%"></span>${k}</span>`).join('');
+    }
+
+    // Annual table with delta
+    const thead=`<thead><tr><th>Mês</th><th>Receitas</th><th>Desp. Fixas</th><th>Cartões</th><th>Variáveis</th><th>Total Desp.</th><th>Saldo</th><th>Δ Saldo</th></tr></thead>`;
+    const rows=MONTHS.map((m,idx)=>{
+      const d=this.ensureMonth(m.key);
+      const inc=this.sumArr(d.income),fix=this.sumArr(d.fixed),crd=this.sumArr(d.cards),vr=this.sumArr(d.varExp);
+      const exp=fix+crd+vr,bal=inc-exp;
+      const balCls=bal>=0?'pos':'neg';
+      let delta='—',deltaCls='delta-eq';
+      if(idx>0){
+        const prev=this.ensureMonth(MONTHS[idx-1].key);
+        const pb=this.sumArr(prev.income)-this.sumArr(prev.fixed)-this.sumArr(prev.cards)-this.sumArr(prev.varExp);
+        const diff=bal-pb;
+        delta=(diff>=0?'+':'')+this.fmt(Math.abs(diff));
+        deltaCls=diff>0?'delta-dn':diff<0?'delta-up':'delta-eq';
+      }
+      return`<tr><td>${m.long}</td><td class="pos">${fmtF(inc)}</td><td>${fmtF(fix)}</td><td>${fmtF(crd)}</td><td>${fmtF(vr)}</td><td class="neg">${fmtF(exp)}</td><td class="${balCls}">${bal>=0?'+':'−'}${fmtF(Math.abs(bal))}</td><td class="delta-cell ${deltaCls}">${delta}</td></tr>`;
+    }).join('');
+    document.getElementById('annualTable').innerHTML=thead+`<tbody>${rows}</tbody>`;
+  },
+
+  // ── Month view ──
+  renderMonth(key){
+    // Destroy cat chart before pane.innerHTML replaces the canvas
+    if(this.charts.cat[key]){try{this.charts.cat[key].destroy();}catch{}delete this.charts.cat[key];}
+    const data=this.ensureMonth(key);
+    const pane=document.getElementById('pane-'+key);
+
+    const incTotal=this.sumArr(data.income);
+    const paidFixed=data.fixed.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const pendFixed=data.fixed.filter(r=>!r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const paidCards=data.cards.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const pendCards=data.cards.filter(r=>!r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const fixTotal=paidFixed+pendFixed;
+    const cardTotal=paidCards+pendCards;
+    const varTotal=this.sumArr(data.varExp);
+    const expTotal=fixTotal+cardTotal+varTotal;
+    const saldo=incTotal-expTotal;
+    const econ=incTotal>0?(saldo/incTotal*100):0;
+    const comprometido=incTotal>0?((fixTotal+cardTotal)/incTotal*100):0;
+    const progPct=Math.min(100,expTotal>0&&incTotal>0?(expTotal/incTotal*100):0);
+    const progColor=progPct>=100?'var(--neg)':progPct>=80?'var(--warn)':'var(--pos)';
+
+    // Previous month comparativo
+    const moIdx=MONTHS.findIndex(m=>m.key===key);
+    let prevComp='';
+    if(moIdx>0){
+      const prevKey=MONTHS[moIdx-1].key;
+      const pd=this.ensureMonth(prevKey);
+      const prevInc=this.sumArr(pd.income);
+      const prevExp=this.sumArr(pd.fixed)+this.sumArr(pd.cards)+this.sumArr(pd.varExp);
+      const prevSaldo=prevInc-prevExp;
+      const dInc=incTotal-prevInc,dExp=expTotal-prevExp,dSal=saldo-prevSaldo;
+      const mo=MONTHS[moIdx-1].short;
+      const dFmt=(v,inv=false)=>{
+        if(v===0)return`<span class="comp-val" style="color:var(--muted)">= igual</span>`;
+        const cls=inv?(v>0?'style="color:var(--pos)"':'style="color:var(--neg)"'):(v>0?'style="color:var(--neg)"':'style="color:var(--pos)"');
+        return`<span class="comp-val" ${cls}>${v>0?'▲':'▼'} R$ ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+      };
+      prevComp=`<div class="comparativo">
+        <div class="comp-title">Comparativo vs ${mo}</div>
+        <div class="comp-grid">
+          <div class="comp-item"><div class="comp-label">Receitas</div>${dFmt(dInc,true)}</div>
+          <div class="comp-item"><div class="comp-label">Despesas</div>${dFmt(dExp)}</div>
+          <div class="comp-item"><div class="comp-label">Saldo</div>${dFmt(dSal,true)}</div>
+        </div>
+      </div>`;
+    }
+
+    // Next due badge
+    const nd=this.nextDue(key);
+    let nextDueBadge='<span style="font-size:11px;color:var(--muted)">Defina vencimentos</span>';
+    if(nd){
+      const cls=nd.days<=0?'badge-overdue':nd.days<=3?'badge-soon':'badge-ok';
+      const txt=nd.days<=0?'Vencido':nd.days===0?'Hoje':nd.days===1?'Amanhã':`Em ${nd.days}d`;
+      nextDueBadge=`<span class="next-due-badge ${cls}">${txt}: ${nd.name}</span>`;
+    }
+
+    pane.innerHTML=`
+      <div class="summary-bar">
+        <div class="sum-card">
+          <div class="sum-label">Receitas</div>
+          <div class="sum-val inc" id="kpi-inc-${key}">${this.fmt(incTotal)}</div>
+          <div class="sum-sub">${data.income.filter(r=>r.amount>0).length} fonte(s)</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-label">Despesas Totais</div>
+          <div class="sum-val exp" id="kpi-exp-${key}">${this.fmt(expTotal)}</div>
+          <div class="prog-wrap"><div class="prog-fill" style="width:${progPct}%;background:${progColor}"></div></div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-label">Saldo do Mês</div>
+          <div class="sum-val ${saldo>=0?'bal':'exp'}" id="kpi-sal-${key}">${saldo>=0?'':'−'}${this.fmt(Math.abs(saldo))}</div>
+          <div class="sum-sub" id="kpi-econ-${key}">${econ>=0?'Economia':'Déficit'}: ${Math.abs(econ).toFixed(1)}%</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-label">Comprometimento</div>
+          <div class="sum-val" style="color:${comprometido>80?'var(--neg)':comprometido>60?'var(--warn)':'var(--yellow)'}" id="kpi-comp-${key}">${comprometido.toFixed(1)}%</div>
+          <div class="sum-sub">da renda em fixas+cartões</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-label">Próx. Vencimento</div>
+          <div style="margin-top:6px">${nextDueBadge}</div>
+          <div class="sum-sub" id="kpi-proj-${key}">Sobra: ${this.fmt(Math.max(0,saldo))}</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="sec">
+          <div class="sec-head"><span class="sec-title">📥 Receitas</span><span class="sec-total inc" id="st-inc-${key}">${this.fmt(incTotal)}</span></div>
+          <div id="incomeRows-${key}"></div>
+          <div class="add-exp-row"><button class="btn-add-sm" onclick="App.addIncomeRow('${key}')">+ Linha</button></div>
+        </div>
+        <div class="sec">
+          <div class="sec-head"><span class="sec-title">🏠 Despesas Fixas</span><span class="sec-total exp" id="st-fix-${key}">${this.fmt(fixTotal)}</span></div>
+          <div class="row-header"><span></span><span>Descrição</span><span class="rh-val">Valor</span><span class="rh-day">Dia</span><span>Categoria</span><span></span></div>
+          <div id="fixedRows-${key}"></div>
+          <div class="sec-footer" id="sf-fix-${key}"></div>
+          <div class="add-exp-row"><button class="btn-add-sm" onclick="App.addFixedRow('${key}')">+ Linha</button></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-head"><span class="sec-title">💳 Cartões</span><span class="sec-total exp" id="st-crd-${key}">${this.fmt(cardTotal)}</span></div>
+        <div class="row-header"><span></span><span>Cartão</span><span class="rh-val">Valor</span><span class="rh-day">Dia</span><span></span></div>
+        <div id="cardsRows-${key}"></div>
+        <div class="sec-footer" id="sf-crd-${key}"></div>
+        <div class="add-exp-row"><button class="btn-add-sm" onclick="App.addCardRow('${key}')">+ Cartão</button></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-head"><span class="sec-title">🛒 Despesas Variáveis</span><span class="sec-total exp" id="st-var-${key}">${this.fmt(varTotal)}</span></div>
+        <div class="filter-bar">
+          <label>Filtrar:</label>
+          <select class="filter-select" onchange="App.setVarFilter('${key}',this.value)">
+            <option value="">Todas as categorias</option>
+            ${VAR_CATS.map(c=>`<option ${(this.varFilter[key]||'')==c?'selected':''}>${c}</option>`).join('')}
+          </select>
+          <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="var-count-${key}"></span>
+        </div>
+        <table class="var-table"><thead><tr>
+          <th style="width:120px">Data</th><th>Descrição</th>
+          <th style="width:130px">Categoria</th><th style="width:120px;text-align:right">Valor (R$)</th><th style="width:36px"></th>
+        </tr></thead><tbody id="varRows-${key}"></tbody></table>
+        <div class="add-exp-row">
+          <button class="btn-add" onclick="App.addVarExpense('${key}')">+ Adicionar Despesa</button>
+        </div>
+      </div>
+      <div class="sec" id="sec-cat-${key}">
+        <div class="sec-head"><span class="sec-title">📊 Distribuição por Categoria</span><span class="sec-total exp" id="st-cat-${key}">${this.fmt(expTotal)}</span></div>
+        <div class="cat-chart-wrap">
+          <div class="cat-chart-canvas"><canvas id="catChart-${key}"></canvas></div>
+          <div class="cat-leg-list" id="catLegend-${key}"></div>
+        </div>
+      </div>
+      ${prevComp}
+    `;
+
+    this.renderIncomeRows(key);
+    this.renderFixedRows(key);
+    this.renderCardsRows(key);
+    this.renderVarRows(key);
+    this.renderCatChart(key);
+  },
+
+  // ── Render sub-sections ──
+  renderIncomeRows(key){
+    const data=this.ensureMonth(key);
+    const el=document.getElementById('incomeRows-'+key);
+    if(!el)return;
+    el.innerHTML=data.income.map((r,i)=>`
+      <div class="edit-row">
+        <span></span>
+        <input class="row-name" value="${this.esc(r.name)}" placeholder="Descrição..." onchange="App.updateIncome('${key}',${i},'name',this.value)">
+        <input class="row-val" type="number" step="0.01" value="${r.amount||''}" placeholder="0,00" onchange="App.updateIncome('${key}',${i},'amount',parseFloat(this.value)||0)">
+        <span></span><span></span>
+        <button class="row-del" onclick="App.deleteIncome('${key}',${i})">×</button>
+      </div>`).join('');
+  },
+
+  renderFixedRows(key){
+    const data=this.ensureMonth(key);
+    const el=document.getElementById('fixedRows-'+key);
+    if(!el)return;
+    const sorted=[...data.fixed.entries()].sort((a,b)=>(a[1].dueDay||99)-(b[1].dueDay||99));
+    el.innerHTML=sorted.map(([i,r])=>{
+      const ds=this.dueStatus(r.dueDay,key);
+      const rowCls=(ds==='overdue'?'due-overdue':ds==='soon'?'due-soon':'')+(r.paid?' row-paid':'');
+      const catOpts=FIXED_CATS.map(c=>`<option ${c===(r.cat||'Outros')?'selected':''}>${c}</option>`).join('');
+      return`<div class="edit-row ${rowCls}">
+        <span class="row-check"><input type="checkbox" ${r.paid?'checked':''} onchange="App.togglePaid('${key}','fixed',${i},this.checked)"></span>
+        <input class="row-name" value="${this.esc(r.name)}" placeholder="Descrição..." onchange="App.updateFixed('${key}',${i},'name',this.value)">
+        <input class="row-val" type="number" step="0.01" value="${r.amount||''}" placeholder="0,00" onchange="App.updateFixed('${key}',${i},'amount',parseFloat(this.value)||0)">
+        <input class="row-due" type="number" min="1" max="31" value="${r.dueDay||''}" placeholder="Dia" title="Dia de vencimento" onchange="App.updateFixed('${key}',${i},'dueDay',parseInt(this.value)||0)">
+        <select class="row-cat" onchange="App.updateFixed('${key}',${i},'cat',this.value)">${catOpts}</select>
+        <button class="row-del" onclick="App.deleteFixed('${key}',${i})">×</button>
+      </div>`;
+    }).join('');
+    this.renderFixedFooter(key);
+  },
+
+  renderFixedFooter(key){
+    const el=document.getElementById('sf-fix-'+key);if(!el)return;
+    const d=this.ensureMonth(key);
+    const paid=d.fixed.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const pend=d.fixed.filter(r=>!r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    el.innerHTML=`<span class="pill pill-paid">✓ Pago: ${this.fmt(paid)}</span><span class="pill pill-pending">⏳ Pendente: ${this.fmt(pend)}</span><span class="pill pill-count">${d.fixed.filter(r=>r.paid).length}/${d.fixed.length} pagos</span>`;
+  },
+
+  renderCardsRows(key){
+    const data=this.ensureMonth(key);
+    const el=document.getElementById('cardsRows-'+key);
+    if(!el)return;
+    el.innerHTML=data.cards.map((r,i)=>{
+      const ds=this.dueStatus(r.dueDay,key);
+      const rowCls=(ds==='overdue'?'due-overdue':ds==='soon'?'due-soon':'')+(r.paid?' row-paid':'');
+      return`<div class="card-row ${rowCls}">
+        <span class="row-check"><input type="checkbox" ${r.paid?'checked':''} onchange="App.togglePaid('${key}','cards',${i},this.checked)"></span>
+        <input class="row-name" value="${this.esc(r.name)}" placeholder="Nome do cartão..." onchange="App.updateCard('${key}',${i},'name',this.value)">
+        <input class="row-val" type="number" step="0.01" value="${r.amount||''}" placeholder="0,00" onchange="App.updateCard('${key}',${i},'amount',parseFloat(this.value)||0)">
+        <input class="row-due" type="number" min="1" max="31" value="${r.dueDay||''}" placeholder="Dia" title="Dia de vencimento" onchange="App.updateCard('${key}',${i},'dueDay',parseInt(this.value)||0)">
+        <button class="row-del" onclick="App.deleteCard('${key}',${i})">×</button>
+      </div>`;
+    }).join('');
+    this.renderCardsFooter(key);
+  },
+
+  renderCardsFooter(key){
+    const el=document.getElementById('sf-crd-'+key);if(!el)return;
+    const d=this.ensureMonth(key);
+    const paid=d.cards.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const pend=d.cards.filter(r=>!r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    el.innerHTML=`<span class="pill pill-paid">✓ Pago: ${this.fmt(paid)}</span><span class="pill pill-pending">⏳ Pendente: ${this.fmt(pend)}</span>`;
+  },
+
+  renderVarRows(key){
+    const data=this.ensureMonth(key);
+    const tbody=document.getElementById('varRows-'+key);if(!tbody)return;
+    const filter=this.varFilter[key]||'';
+    const rows=filter?data.varExp.filter(r=>r.cat===filter):data.varExp;
+    const countEl=document.getElementById('var-count-'+key);
+    if(countEl)countEl.textContent=filter?`${rows.length} de ${data.varExp.length} lançamento(s)`:`${data.varExp.length} lançamento(s)`;
+    if(!rows.length){
+      tbody.innerHTML=`<tr><td colspan="5" class="empty">${filter?`Nenhuma despesa em "${filter}" este mês.`:'Nenhuma despesa variável. Clique em "+ Adicionar Despesa".'}</td></tr>`;
+      return;
+    }
+    const catOpts=sel=>VAR_CATS.map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+    const allIdx=data.varExp.reduce((m,r,i)=>{m[r.id]=i;return m;},{});
+    tbody.innerHTML=rows.map(v=>{
+      const i=allIdx[v.id];
+      return`<tr>
+        <td><input class="var-cell" type="date" value="${v.date}" onchange="App.updateVar('${key}',${i},'date',this.value)"></td>
+        <td><input class="var-cell" type="text" value="${this.esc(v.desc)}" placeholder="Descrição..." onchange="App.updateVar('${key}',${i},'desc',this.value)"></td>
+        <td><select class="var-cell" onchange="App.updateVar('${key}',${i},'cat',this.value)">${catOpts(v.cat)}</select></td>
+        <td><input class="var-cell var-amt" type="number" step="0.01" value="${v.amount||''}" placeholder="0,00" onchange="App.updateVar('${key}',${i},'amount',parseFloat(this.value)||0)"></td>
+        <td><button class="var-del" onclick="App.deleteVar('${key}',${i})">×</button></td>
+      </tr>`;
+    }).join('');
+  },
+
+  setVarFilter(key,val){
+    this.varFilter[key]=val;
+    this.renderVarRows(key);
+  },
+
+  renderCatChart(key){
+    // Destroy previous instance for this month if canvas was replaced
+    if(this.charts.cat[key]){
+      try{this.charts.cat[key].destroy();}catch{}
+      delete this.charts.cat[key];
+    }
+    const canvas=document.getElementById('catChart-'+key);
+    if(!canvas)return;
+    const catData=this.getCatBreakdown(key);
+    if(!catData.length){
+      canvas.closest('.sec').style.display='none';
+      return;
+    }
+    canvas.closest('.sec').style.display='';
+    const cols=PALETTE[this.state.theme];
+    const total=catData.reduce((s,[,v])=>s+v,0);
+    const dColors=catData.map((_,i)=>cols[i%cols.length]);
+    const fmtF=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    this.charts.cat[key]=new Chart(canvas,{
+      type:'doughnut',
+      data:{
+        labels:catData.map(([k])=>k),
+        datasets:[{data:catData.map(([,v])=>v),backgroundColor:dColors,borderWidth:2,borderColor:this.getCSSVar('--s1'),hoverOffset:5}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'58%',
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtF(ctx.raw)} (${total>0?(ctx.raw/total*100).toFixed(1):0}%)`}}}
+      }
+    });
+    const legEl=document.getElementById('catLegend-'+key);
+    if(legEl){
+      legEl.innerHTML=catData.map(([k,v],i)=>`
+        <div class="cat-leg-row">
+          <div class="cat-leg-left">
+            <span class="cat-leg-dot" style="background:${dColors[i]}"></span>
+            <span class="cat-leg-name">${k}</span>
+          </div>
+          <div class="cat-leg-nums">
+            <div class="cat-leg-val">${fmtF(v)}</div>
+            <div class="cat-leg-pct">${total>0?(v/total*100).toFixed(1):0}%</div>
+          </div>
+        </div>`).join('');
+    }
+  },
+
+  // ── Mutations ──
+  updateIncome(key,i,field,val){this.state.months[key].income[i][field]=val;this.save();this.updateSummary(key);this.renderIncomeRows(key);},
+  deleteIncome(key,i){this.state.months[key].income.splice(i,1);this.save();this.renderMonth(key);},
+  addIncomeRow(key){
+    this.state.months[key].income.push({id:'fi-'+Date.now(),name:'',amount:0});
+    this.save();this.renderMonth(key);
+    setTimeout(()=>{const rows=document.querySelectorAll(`#incomeRows-${key} .edit-row`);rows[rows.length-1]?.querySelector('.row-name')?.focus();},50);
+  },
+
+  updateFixed(key,i,field,val){this.state.months[key].fixed[i][field]=val;this.save();this.updateSummary(key);this.renderFixedRows(key);},
+  deleteFixed(key,i){this.state.months[key].fixed.splice(i,1);this.save();this.renderMonth(key);},
+  addFixedRow(key){
+    this.state.months[key].fixed.push({id:'fe-'+Date.now(),name:'',amount:0,cat:'Outros',dueDay:0,paid:false});
+    this.save();this.renderMonth(key);
+    setTimeout(()=>{const rows=document.querySelectorAll(`#fixedRows-${key} .edit-row`);rows[rows.length-1]?.querySelector('.row-name')?.focus();},50);
+  },
+  togglePaid(key,section,i,val){
+    this.state.months[key][section][i].paid=val;
+    this.save();
+    if(section==='fixed'){this.renderFixedRows(key);}else{this.renderCardsRows(key);}
+    this.updateSummary(key);
+  },
+
+  updateCard(key,i,field,val){this.state.months[key].cards[i][field]=val;this.save();this.updateSummary(key);this.renderCardsRows(key);},
+  deleteCard(key,i){this.state.months[key].cards.splice(i,1);this.save();this.renderMonth(key);},
+  addCardRow(key){
+    this.state.months[key].cards.push({id:'cc-'+Date.now(),name:'Novo Cartão',amount:0,dueDay:0,paid:false});
+    this.save();this.renderMonth(key);
+  },
+
+  updateVar(key,i,field,val){this.state.months[key].varExp[i][field]=val;this.save();this.updateSummary(key);},
+  deleteVar(key,i){this.state.months[key].varExp.splice(i,1);this.save();this.renderMonth(key);},
+  addVarExpense(key){
+    const d=this.ensureMonth(key);
+    const today=new Date().toISOString().slice(0,10);
+    d.varExp.push({id:'vx-'+Date.now(),date:today,desc:'',cat:'Outros',amount:0});
+    this.save();this.renderMonth(key);
+    setTimeout(()=>{const rows=document.querySelectorAll(`#varRows-${key} tr`);rows[rows.length-1]?.querySelector('input[type=text]')?.focus();},50);
+  },
+
+  // ── Summary update (lightweight) ──
+  updateSummary(key){
+    const data=this.state.months[key];if(!data)return;
+    const incTotal=this.sumArr(data.income);
+    const fixTotal=this.sumArr(data.fixed);
+    const cardTotal=this.sumArr(data.cards);
+    const varTotal=this.sumArr(data.varExp);
+    const expTotal=fixTotal+cardTotal+varTotal;
+    const saldo=incTotal-expTotal;
+    const econ=incTotal>0?(saldo/incTotal*100):0;
+    const comprometido=incTotal>0?((fixTotal+cardTotal)/incTotal*100):0;
+    const progPct=Math.min(100,incTotal>0?(expTotal/incTotal*100):0);
+    const progColor=progPct>=100?'var(--neg)':progPct>=80?'var(--warn)':'var(--pos)';
+
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    const setCls=(id,cls)=>{const el=document.getElementById(id);if(el)el.className=`sum-val ${cls}`;};
+    set(`kpi-inc-${key}`,this.fmt(incTotal));
+    set(`kpi-exp-${key}`,this.fmt(expTotal));
+    const progEl=document.querySelector(`#pane-${key} .prog-fill`);
+    if(progEl){progEl.style.width=`${progPct}%`;progEl.style.background=progColor;}
+    setCls(`kpi-sal-${key}`,saldo>=0?'bal':'exp');
+    set(`kpi-sal-${key}`,(saldo>=0?'':'−')+this.fmt(Math.abs(saldo)));
+    set(`kpi-econ-${key}`,`${econ>=0?'Economia':'Déficit'}: ${Math.abs(econ).toFixed(1)}%`);
+    set(`kpi-comp-${key}`,`${comprometido.toFixed(1)}%`);
+    set(`kpi-proj-${key}`,`Sobra: ${this.fmt(Math.max(0,saldo))}`);
+    set(`st-inc-${key}`,this.fmt(incTotal));
+    set(`st-fix-${key}`,this.fmt(fixTotal));
+    set(`st-crd-${key}`,this.fmt(cardTotal));
+    set(`st-var-${key}`,this.fmt(varTotal));
+
+    const countEl=document.getElementById(`var-count-${key}`);
+    if(countEl){const f=this.varFilter[key]||'';const tot=data.varExp.length;const fil=f?data.varExp.filter(r=>r.cat===f).length:tot;countEl.textContent=f?`${fil} de ${tot} lançamento(s)`:`${tot} lançamento(s)`;}
+    this.renderFixedFooter(key);
+    this.renderCardsFooter(key);
+    const stCat=document.getElementById('st-cat-'+key);
+    if(stCat)stCat.textContent=this.fmt(expTotal);
+    this.renderCatChart(key);
+  },
+
+  // ── Export ──
+  exportCSV(){
+    const key=this.activeMonth;
+    if(key==='dashboard'){alert('Selecione um mês para exportar.');return;}
+    const data=this.ensureMonth(key);
+    const rows=[['Tipo','Descrição','Categoria','Valor','Dia Venc.','Pago']];
+    data.income.forEach(r=>rows.push(['Receita',r.name,'Receita',r.amount,'','']));
+    data.fixed.forEach(r=>rows.push(['Desp. Fixa',r.name,r.cat||'',r.amount,r.dueDay||'',r.paid?'Sim':'Não']));
+    data.cards.forEach(r=>rows.push(['Cartão',r.name,'Cartões',r.amount,r.dueDay||'',r.paid?'Sim':'Não']));
+    data.varExp.forEach(r=>rows.push(['Desp. Variável',r.desc,r.cat,r.amount,'','']));
+    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`financas-${key}.csv`;a.click();
+  },
+
+  exportReport(){
+    const key=this.activeMonth;
+    if(key==='dashboard'){this.showToast('Selecione um mês primeiro.');return;}
+    const mo=MONTHS.find(m=>m.key===key);
+    const data=this.ensureMonth(key);
+    const incTotal=this.sumArr(data.income);
+    const fixTotal=this.sumArr(data.fixed);
+    const cardTotal=this.sumArr(data.cards);
+    const varTotal=this.sumArr(data.varExp);
+    const expTotal=fixTotal+cardTotal+varTotal;
+    const saldo=incTotal-expTotal;
+    const paidAmt=data.fixed.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0)+data.cards.filter(r=>r.paid).reduce((s,r)=>s+(r.amount||0),0);
+    const pendAmt=(fixTotal+cardTotal)-paidAmt;
+    const fmtN=n=>'R$ '+Math.abs(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    let txt=`=== ${mo.long} — Gui & Nic ===\n\n`;
+    txt+=`RECEITAS:  ${fmtN(incTotal)}\n`;
+    data.income.filter(r=>r.amount>0).forEach(r=>txt+=`  ${r.name.padEnd(30)} ${fmtN(r.amount)}\n`);
+    txt+=`\nDESPESAS FIXAS:  ${fmtN(fixTotal)}\n`;
+    data.fixed.forEach(r=>txt+=`  ${r.paid?'[✓]':'[ ]'} ${r.name.padEnd(28)} ${fmtN(r.amount)}\n`);
+    txt+=`\nCARTÕES:  ${fmtN(cardTotal)}\n`;
+    data.cards.forEach(r=>txt+=`  ${r.paid?'[✓]':'[ ]'} ${r.name.padEnd(28)} ${fmtN(r.amount)}\n`);
+    if(data.varExp.length){
+      txt+=`\nDESPESAS VARIÁVEIS:  ${fmtN(varTotal)}\n`;
+      data.varExp.forEach(r=>txt+=`  ${r.desc.padEnd(30)} ${fmtN(r.amount)}  (${r.cat})\n`);
+    }
+    txt+=`\n${'─'.repeat(45)}\n`;
+    txt+=`TOTAL DESPESAS:  ${fmtN(expTotal)}\n`;
+    txt+=`  Pago:          ${fmtN(paidAmt)}\n`;
+    txt+=`  Pendente:      ${fmtN(pendAmt)}\n`;
+    txt+=`SALDO:           ${saldo>=0?'+':'−'}${fmtN(Math.abs(saldo))}\n`;
+
+    navigator.clipboard.writeText(txt).then(()=>this.showToast('✓ Relatório copiado para o clipboard!'))
+      .catch(()=>this.showToast('Não foi possível copiar. Verifique as permissões.'));
+  },
+
+  showToast(msg){
+    const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2500);
+  },
+
+  // ── Helpers ──
+  sumArr(arr){return arr.reduce((s,r)=>s+(r.amount||0),0);},
+  fmt(n){return'R$ '+Math.abs(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});},
+  esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');},
+  getCSSVar(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();},
+};
+
+App.init();
+</script>
+</body>
+</html>
