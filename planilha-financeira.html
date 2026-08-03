@@ -172,6 +172,18 @@
     .badge-soon{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
     .badge-overdue{background:color-mix(in srgb,var(--neg) 12%,transparent);color:var(--neg)}
 
+    /* Category chart in month view */
+    .cat-chart-wrap{display:flex;align-items:center;gap:24px;padding:16px;flex-wrap:wrap}
+    .cat-chart-canvas{position:relative;height:180px;width:180px;flex-shrink:0}
+    .cat-leg-list{flex:1;min-width:160px;display:flex;flex-direction:column;gap:8px}
+    .cat-leg-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;gap:8px}
+    .cat-leg-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+    .cat-leg-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt2)}
+    .cat-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .cat-leg-nums{text-align:right;flex-shrink:0}
+    .cat-leg-val{font-weight:600;font-variant-numeric:tabular-nums;font-size:12px}
+    .cat-leg-pct{color:var(--muted);font-size:10px}
+
     /* Toast */
     #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--s1);border-radius:6px;padding:10px 20px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
     #toast.show{opacity:1}
@@ -262,7 +274,7 @@ const PALETTE={
 const App={
   state:null,
   activeMonth:MONTHS[0].key,
-  charts:{bar:null,donut:null},
+  charts:{bar:null,donut:null,cat:{}},
   varFilter:{},
 
   init(){
@@ -300,7 +312,12 @@ const App={
   },
 
   loadState(){
-    try{const r=localStorage.getItem('pf-guinic-v2');if(r){const s=JSON.parse(r);if(!s.months)s.months={};return s;}}catch{}
+    try{
+      const r2=localStorage.getItem('pf-guinic-v2');
+      if(r2){const s=JSON.parse(r2);if(!s.months)s.months={};return s;}
+      const r1=localStorage.getItem('pf-guinic-v1');
+      if(r1){const s=JSON.parse(r1);if(!s.months)s.months={};return s;}
+    }catch{}
     return{theme:'light',months:{}};
   },
 
@@ -473,6 +490,8 @@ const App={
 
   // ── Month view ──
   renderMonth(key){
+    // Destroy cat chart before pane.innerHTML replaces the canvas
+    if(this.charts.cat[key]){try{this.charts.cat[key].destroy();}catch{}delete this.charts.cat[key];}
     const data=this.ensureMonth(key);
     const pane=document.getElementById('pane-'+key);
 
@@ -596,6 +615,13 @@ const App={
           <button class="btn-add" onclick="App.addVarExpense('${key}')">+ Adicionar Despesa</button>
         </div>
       </div>
+      <div class="sec" id="sec-cat-${key}">
+        <div class="sec-head"><span class="sec-title">📊 Distribuição por Categoria</span><span class="sec-total exp" id="st-cat-${key}">${this.fmt(expTotal)}</span></div>
+        <div class="cat-chart-wrap">
+          <div class="cat-chart-canvas"><canvas id="catChart-${key}"></canvas></div>
+          <div class="cat-leg-list" id="catLegend-${key}"></div>
+        </div>
+      </div>
       ${prevComp}
     `;
 
@@ -603,6 +629,7 @@ const App={
     this.renderFixedRows(key);
     this.renderCardsRows(key);
     this.renderVarRows(key);
+    this.renderCatChart(key);
   },
 
   // ── Render sub-sections ──
@@ -705,6 +732,51 @@ const App={
     this.renderVarRows(key);
   },
 
+  renderCatChart(key){
+    // Destroy previous instance for this month if canvas was replaced
+    if(this.charts.cat[key]){
+      try{this.charts.cat[key].destroy();}catch{}
+      delete this.charts.cat[key];
+    }
+    const canvas=document.getElementById('catChart-'+key);
+    if(!canvas)return;
+    const catData=this.getCatBreakdown(key);
+    if(!catData.length){
+      canvas.closest('.sec').style.display='none';
+      return;
+    }
+    canvas.closest('.sec').style.display='';
+    const cols=PALETTE[this.state.theme];
+    const total=catData.reduce((s,[,v])=>s+v,0);
+    const dColors=catData.map((_,i)=>cols[i%cols.length]);
+    const fmtF=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    this.charts.cat[key]=new Chart(canvas,{
+      type:'doughnut',
+      data:{
+        labels:catData.map(([k])=>k),
+        datasets:[{data:catData.map(([,v])=>v),backgroundColor:dColors,borderWidth:2,borderColor:this.getCSSVar('--s1'),hoverOffset:5}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'58%',
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtF(ctx.raw)} (${total>0?(ctx.raw/total*100).toFixed(1):0}%)`}}}
+      }
+    });
+    const legEl=document.getElementById('catLegend-'+key);
+    if(legEl){
+      legEl.innerHTML=catData.map(([k,v],i)=>`
+        <div class="cat-leg-row">
+          <div class="cat-leg-left">
+            <span class="cat-leg-dot" style="background:${dColors[i]}"></span>
+            <span class="cat-leg-name">${k}</span>
+          </div>
+          <div class="cat-leg-nums">
+            <div class="cat-leg-val">${fmtF(v)}</div>
+            <div class="cat-leg-pct">${total>0?(v/total*100).toFixed(1):0}%</div>
+          </div>
+        </div>`).join('');
+    }
+  },
+
   // ── Mutations ──
   updateIncome(key,i,field,val){this.state.months[key].income[i][field]=val;this.save();this.updateSummary(key);this.renderIncomeRows(key);},
   deleteIncome(key,i){this.state.months[key].income.splice(i,1);this.save();this.renderMonth(key);},
@@ -779,6 +851,9 @@ const App={
     if(countEl){const f=this.varFilter[key]||'';const tot=data.varExp.length;const fil=f?data.varExp.filter(r=>r.cat===f).length:tot;countEl.textContent=f?`${fil} de ${tot} lançamento(s)`:`${tot} lançamento(s)`;}
     this.renderFixedFooter(key);
     this.renderCardsFooter(key);
+    const stCat=document.getElementById('st-cat-'+key);
+    if(stCat)stCat.textContent=this.fmt(expTotal);
+    this.renderCatChart(key);
   },
 
   // ── Export ──
