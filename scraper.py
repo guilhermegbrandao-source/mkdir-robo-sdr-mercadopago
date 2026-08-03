@@ -138,6 +138,28 @@ def search_ecommerces(nicho: str, limite: int) -> list[str]:
                 "https://www.beautifulshop.com.br",
                 "https://www.lojasrede.com.br",
             ],
+            "autopecas": [
+                "https://www.mercadocar.com.br",
+                "https://www.jocar.com.br",
+                "https://www.canaldapeca.com.br",
+                "https://hipervarejo.com.br",
+                "https://www.pitstop.com.br",
+                "https://www.autozone.com.br",
+                "https://goparts.com.br",
+                "https://www.allpartsnet.com.br",
+                "https://www.brondaniautopecas.com.br",
+                "https://www.virtualautopecas.com.br",
+                "https://www.kepecas.com.br",
+                "https://www.bproautopecas.com.br",
+                "https://www.brasilautopecas.com.br",
+                "https://www.procurapecas.com.br",
+                "https://www.maxparts.com.br",
+                "https://www.conexaobrasilautopecas.com.br",
+                "https://www.rsautoparts.com.br",
+                "https://www.autopecasmax.com.br",
+                "https://www.gamapecas.com.br",
+                "https://www.kdapeca.com.br",
+            ],
         }
         nicho_lower = nicho.lower()
         matched_seed = []
