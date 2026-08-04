@@ -1,0 +1,21 @@
+Empresa,Site,Plataforma,CNPJ,Gateway/Checkout,Tráfego Est./mês,Fat. Estimado/mês,Score,Prioridade
+Philco,https://philco.com.br,VTEX,11.283.356/0001-04,A confirmar,~683k,~R$2.73M,92,ALTA
+Midea,https://midea.com.br,VTEX,43.546.362/0001-95,A confirmar,~450k,~R$2.70M,92,ALTA
+Britânia,https://britania.com.br,VTEX (provável),76.492.701/0001-57,A confirmar,~531k,~R$2.12M,90,ALTA
+Climário,https://climario.com.br,Shopify,08.824.171/0001-47,PIX / Cartão (12x) / Boleto,~138k,~R$993k,85,ALTA
+ShopClub (Electrolux),https://shopclub.com.br,A confirmar,76.487.032/0001-25,PIX / Cartão (6 bandeiras),~471k,~R$2.26M,82,ALTA
+CentralAr,https://centralar.com.br,A confirmar,08.382.929/0001-34,A confirmar,~640k,~R$2.40M,82,ALTA
+Friopeças,https://friopecas.com.br,A confirmar,09.316.105/0001-29,A confirmar,~450k,~R$1.35M,82,ALTA
+Daikin,https://loja.daikin.com.br,A confirmar,02.172.568/0001-15,PIX / Cartão (10x sem juros),~325k,~R$2.44M,82,ALTA
+Dufrio,https://dufrio.com.br,Custom (Agência Delucca),01.754.239/0001-10,A confirmar,~446k,~R$2.68M,80,ALTA
+Consul,https://consul.com.br,A confirmar,Whirlpool S.A. – A confirmar,A confirmar,~300k (est.),~R$1.26M,78,MÉDIA
+Colombo,https://colombo.com.br,A confirmar,89.848.543/0001-77,A confirmar,~379k,~R$1.14M,77,MÉDIA
+Leveros,https://leveros.com.br,A confirmar,61.502.324/0001-12,A confirmar,~200k,~R$1.20M,72,MÉDIA
+Gazin,https://gazin.com.br,A confirmar,77.941.490/0001-55,A confirmar,~250k,~R$1.50M,72,MÉDIA
+Lojas Cem,https://lojascem.com.br,A confirmar,56.642.960/0001-00,A confirmar,~163k,~R$978k,72,MÉDIA
+Polishop,https://polishop.com.br,VTEX,00.436.042/0008-46,VTEX checkout (cartão + boleto),~190k,~R$570k,65,MÉDIA
+EletroShopping,https://eletroshopping.com.br,A confirmar,10.339.283/0001-54,A confirmar,~80k (est.),~R$840k,60,BAIXA
+Sipolatti,https://sipolatti.com.br,A confirmar,30.689.848/0001-30,A confirmar,~120k (est.),~R$720k,55,BAIXA
+CityLar,https://citylar.com.br,A confirmar,A confirmar,A confirmar,~100k (est.),~R$600k,48,BAIXA
+Arno,https://arno.com.br,A confirmar,SEB do Brasil – A confirmar,A confirmar,~200k (est.),~R$900k,48,BAIXA
+Mondial,https://mondial.com.br,A confirmar,A confirmar,A confirmar,~150k (est.),~R$563k,45,BAIXA
